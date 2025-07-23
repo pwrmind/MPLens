@@ -1,0 +1,537 @@
+<!DOCTYPE html>
+<html lang="ru">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Сравнение цен на маркетплейсах</title>
+    <script src="https://cdn.jsdelivr.net/npm/vue@2.6.14/dist/vue.js"></script>
+    <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/js/all.min.js"></script>
+    <link href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css" rel="stylesheet">
+    <link href="https://cdn.jsdelivr.net/npm/tailwindcss@2.2.19/dist/tailwind.min.css" rel="stylesheet">
+    <style>
+        .price-increase {
+            color: #ef4444;
+        }
+        .price-decrease {
+            color: #22c55e;
+        }
+        .scrollbar-hide::-webkit-scrollbar {
+            display: none;
+        }
+    </style>
+</head>
+<body class="bg-gray-50">
+    <div id="app" class="flex flex-col min-h-screen">
+        <!-- Шапка -->
+        <header class="bg-white shadow py-4 px-6">
+            <div class="flex justify-between items-center">
+                <h1 class="text-2xl font-bold text-indigo-700">
+                    <i class="fas fa-chart-line mr-2"></i>Сравнение цен на маркетплейсах
+                </h1>
+                <div class="flex items-center space-x-4">
+                    <div class="relative">
+                        <input v-model="searchQuery" type="text" placeholder="Поиск SKU..." 
+                               class="pl-10 pr-4 py-2 rounded-lg border border-gray-300 focus:outline-none focus:ring-2 focus:ring-indigo-500">
+                        <i class="fas fa-search absolute left-3 top-3 text-gray-400"></i>
+                    </div>
+                    <button class="bg-indigo-600 hover:bg-indigo-700 text-white px-4 py-2 rounded-lg flex items-center">
+                        <i class="fas fa-download mr-2"></i> Экспорт
+                    </button>
+                </div>
+            </div>
+        </header>
+
+        <!-- Основной контент -->
+        <main class="flex flex-1 overflow-hidden">
+            <!-- Боковая панель -->
+            <div class="w-1/4 bg-white border-r border-gray-200 flex flex-col">
+                <div class="p-4 border-b border-gray-200">
+                    <h2 class="text-lg font-semibold mb-4">Список SKU</h2>
+                    <div class="flex mb-4">
+                        <input v-model="newSku" type="text" placeholder="Добавить новый SKU..." 
+                               class="flex-1 px-4 py-2 border border-gray-300 rounded-l-lg focus:outline-none focus:ring-2 focus:ring-indigo-500">
+                        <button @click="addNewSku" 
+                                class="bg-indigo-600 hover:bg-indigo-700 text-white px-4 py-2 rounded-r-lg">
+                            <i class="fas fa-plus"></i>
+                        </button>
+                    </div>
+                </div>
+                
+                <div class="overflow-y-auto flex-1 scrollbar-hide">
+                    <div v-for="(sku, index) in filteredSkus" :key="index" 
+                         @click="selectSku(sku)"
+                         :class="{'bg-indigo-50 border-l-4 border-indigo-500': selectedSku && selectedSku.id === sku.id}"
+                         class="p-3 border-b border-gray-200 hover:bg-gray-50 cursor-pointer flex justify-between items-center">
+                        <div>
+                            <div class="font-medium">{{ sku.name }}</div>
+                            <div class="text-sm text-gray-500">ID: {{ sku.id }}</div>
+                        </div>
+                        <div class="flex space-x-2">
+                            <span class="text-xs px-2 py-1 rounded-full" 
+                                  :class="sku.priceChange >= 0 ? 'bg-red-100 text-red-800' : 'bg-green-100 text-green-800'">
+                                {{ sku.priceChange >= 0 ? '↑' : '↓' }} {{ Math.abs(sku.priceChange) }}%
+                            </span>
+                            <button @click.stop="toggleCompared(sku)" 
+                                    class="text-gray-500 hover:text-indigo-600">
+                                <i v-if="isCompared(sku)" class="fas fa-minus-circle text-red-500"></i>
+                                <i v-else class="fas fa-plus-circle"></i>
+                            </button>
+                        </div>
+                    </div>
+                </div>
+            </div>
+
+            <!-- Основное рабочее пространство -->
+            <div class="flex-1 flex flex-col overflow-hidden">
+                <!-- График -->
+                <div class="bg-white p-4 border-b border-gray-200">
+                    <div class="flex justify-between items-center mb-4">
+                        <h2 class="text-lg font-semibold">
+                            <span v-if="selectedSku">История цен для {{ selectedSku.name }}</span>
+                            <span v-else>Выберите SKU для отображения графика</span>
+                        </h2>
+                        <div class="flex space-x-2">
+                            <select v-model="timeRange" class="border border-gray-300 rounded px-3 py-1">
+                                <option value="7">7 дней</option>
+                                <option value="30">30 дней</option>
+                                <option value="90">90 дней</option>
+                            </select>
+                            <button @click="toggleFullscreen" class="text-gray-500 hover:text-indigo-600">
+                                <i class="fas fa-expand"></i>
+                            </button>
+                        </div>
+                    </div>
+                    <div class="h-64">
+                        <canvas id="priceChart"></canvas>
+                    </div>
+                </div>
+
+                <!-- Таблица сравнения -->
+                <div class="flex-1 overflow-auto">
+                    <div class="min-w-full">
+                        <table class="min-w-full divide-y divide-gray-200">
+                            <thead class="bg-gray-50 sticky top-0">
+                                <tr>
+                                    <th scope="col" class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
+                                        Характеристика
+                                    </th>
+                                    <th v-for="(sku, index) in comparedSkus" :key="index" scope="col" 
+                                        class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
+                                        <div class="flex items-center justify-between">
+                                            <span>{{ sku.name }}</span>
+                                            <button @click="removeCompared(sku)" class="text-gray-400 hover:text-red-500">
+                                                <i class="fas fa-times"></i>
+                                            </button>
+                                        </div>
+                                    </th>
+                                    <th scope="col" class="px-6 py-3 text-center">
+                                        <button @click="addComparisonColumn" 
+                                                class="text-indigo-600 hover:text-indigo-800 text-sm font-medium">
+                                            <i class="fas fa-plus mr-1"></i> Добавить
+                                        </button>
+                                    </th>
+                                </tr>
+                            </thead>
+                            <tbody class="bg-white divide-y divide-gray-200">
+                                <tr v-for="(row, rowIndex) in comparisonRows" :key="rowIndex">
+                                    <td class="px-6 py-4 whitespace-nowrap text-sm font-medium text-gray-900">
+                                        {{ row.characteristic }}
+                                    </td>
+                                    <td v-for="(sku, skuIndex) in comparedSkus" :key="skuIndex" 
+                                        class="px-6 py-4 whitespace-nowrap text-sm text-gray-500">
+                                        <div v-if="row.values[sku.id]">
+                                            {{ row.values[sku.id].value }}
+                                            <span v-if="row.values[sku.id].trend === 'up'" 
+                                                  class="price-increase ml-1"><i class="fas fa-arrow-up"></i></span>
+                                            <span v-else-if="row.values[sku.id].trend === 'down'" 
+                                                  class="price-decrease ml-1"><i class="fas fa-arrow-down"></i></span>
+                                        </div>
+                                        <div v-else class="text-gray-400">-</div>
+                                    </td>
+                                    <td></td>
+                                </tr>
+                            </tbody>
+                        </table>
+                    </div>
+                </div>
+            </div>
+        </main>
+
+        <!-- Футер -->
+        <footer class="bg-white border-t border-gray-200 py-4 px-6 text-center text-sm text-gray-500">
+            <p>Инструмент сравнения цен на маркетплейсах • {{ new Date().getFullYear() }}</p>
+        </footer>
+    </div>
+
+    <script>
+        new Vue({
+            el: '#app',
+            data: {
+                searchQuery: '',
+                newSku: '',
+                timeRange: '30',
+                selectedSku: null,
+                comparedSkus: [],
+                skus: [
+                    { id: 'sku001', name: 'Смартфон Samsung Galaxy S21', priceHistory: [], priceChange: 2.5 },
+                    { id: 'sku002', name: 'Ноутбук Apple MacBook Air', priceHistory: [], priceChange: -1.2 },
+                    { id: 'sku003', name: 'Наушники Sony WH-1000XM4', priceHistory: [], priceChange: 0.8 },
+                    { id: 'sku004', name: 'Умные часы Apple Watch Series 7', priceHistory: [], priceChange: 3.1 },
+                    { id: 'sku005', name: 'Планшет Samsung Galaxy Tab S7', priceHistory: [], priceChange: -0.5 },
+                    { id: 'sku006', name: 'Фитнес-браслет Xiaomi Mi Band 6', priceHistory: [], priceChange: 1.7 },
+                    { id: 'sku007', name: 'Игровая консоль PlayStation 5', priceHistory: [], priceChange: -2.3 },
+                    { id: 'sku008', name: 'Электронная книга Amazon Kindle', priceHistory: [], priceChange: 0.4 }
+                ],
+                chart: null,
+                comparisonRows: [
+                    { characteristic: 'Текущая цена', values: {} },
+                    { characteristic: 'Минимальная цена (30 дн.)', values: {} },
+                    { characteristic: 'Максимальная цена (30 дн.)', values: {} },
+                    { characteristic: 'Средняя цена', values: {} },
+                    { characteristic: 'Количество предложений', values: {} },
+                    { characteristic: 'Рейтинг товара', values: {} },
+                    { characteristic: 'Доступность', values: {} }
+                ]
+            },
+            computed: {
+                filteredSkus() {
+                    if (!this.searchQuery) return this.skus;
+                    const query = this.searchQuery.toLowerCase();
+                    return this.skus.filter(sku => 
+                        sku.name.toLowerCase().includes(query) || 
+                        sku.id.toLowerCase().includes(query)
+                    );
+                }
+            },
+            watch: {
+                selectedSku() {
+                    this.updateChart();
+                    this.updateComparisonTable();
+                },
+                comparedSkus() {
+                    this.updateChart();
+                    this.updateComparisonTable();
+                },
+                timeRange() {
+                    this.updateChart();
+                }
+            },
+            mounted() {
+                this.generatePriceHistory();
+                this.initChart();
+            },
+            methods: {
+                generatePriceHistory() {
+                    const today = new Date();
+                    this.skus.forEach(sku => {
+                        const history = [];
+                        let basePrice = Math.floor(Math.random() * 20000) + 5000;
+                        
+                        for (let i = 90; i >= 0; i--) {
+                            const date = new Date(today);
+                            date.setDate(today.getDate() - i);
+                            
+                            // Генерация колебаний цен
+                            const fluctuation = Math.random() > 0.7 ? (Math.random() * 0.1 - 0.05) * basePrice : 0;
+                            const price = Math.round(basePrice + fluctuation);
+                            
+                            history.push({
+                                date: date.toISOString().split('T')[0],
+                                price
+                            });
+                        }
+                        
+                        // Рассчитаем изменение цены за последние 30 дней
+                        const currentPrice = history[history.length - 1].price;
+                        const monthAgoPrice = history[history.length - 30].price;
+                        sku.priceChange = parseFloat(((currentPrice - monthAgoPrice) / monthAgoPrice * 100).toFixed(1));
+                        
+                        sku.priceHistory = history;
+                    });
+                    
+                    // Выбираем первый SKU по умолчанию
+                    if (this.skus.length > 0) {
+                        this.selectedSku = this.skus[0];
+                    }
+                },
+                initChart() {
+                    const ctx = document.getElementById('priceChart').getContext('2d');
+                    this.chart = new Chart(ctx, {
+                        type: 'line',
+                        data: {
+                            labels: [],
+                            datasets: []
+                        },
+                        options: {
+                            responsive: true,
+                            maintainAspectRatio: false,
+                            scales: {
+                                y: {
+                                    beginAtZero: false,
+                                    grid: {
+                                        color: 'rgba(0, 0, 0, 0.05)'
+                                    },
+                                    ticks: {
+                                        callback: function(value) {
+                                            return value.toLocaleString('ru-RU') + ' ₽';
+                                        }
+                                    }
+                                },
+                                x: {
+                                    grid: {
+                                        display: false
+                                    }
+                                }
+                            },
+                            plugins: {
+                                tooltip: {
+                                    callbacks: {
+                                        label: function(context) {
+                                            return context.dataset.label + ': ' + context.parsed.y.toLocaleString('ru-RU') + ' ₽';
+                                        }
+                                    }
+                                },
+                                legend: {
+                                    position: 'top',
+                                    labels: {
+                                        boxWidth: 12,
+                                        padding: 20
+                                    }
+                                }
+                            }
+                        }
+                    });
+                },
+                updateChart() {
+                    if (!this.chart) return;
+                    
+                    const days = parseInt(this.timeRange);
+                    const today = new Date();
+                    const labels = [];
+                    
+                    for (let i = days - 1; i >= 0; i--) {
+                        const date = new Date(today);
+                        date.setDate(today.getDate() - i);
+                        labels.push(date.toLocaleDateString('ru-RU', { day: 'numeric', month: 'short' }));
+                    }
+                    
+                    const datasets = [];
+                    const colors = [
+                        '#4f46e5', // Индиго
+                        '#ef4444', // Красный
+                        '#10b981', // Зеленый
+                        '#f59e0b', // Желтый
+                        '#8b5cf6', // Фиолетовый
+                        '#ec4899'  // Розовый
+                    ];
+                    
+                    // Добавить основной выбранный SKU
+                    if (this.selectedSku) {
+                        const prices = this.getPricesForPeriod(this.selectedSku, days);
+                        datasets.push({
+                            label: this.selectedSku.name,
+                            data: prices,
+                            borderColor: colors[0],
+                            backgroundColor: 'rgba(79, 70, 229, 0.1)',
+                            borderWidth: 3,
+                            tension: 0.2,
+                            fill: false
+                        });
+                    }
+                    
+                    // Добавить SKU для сравнения
+                    this.comparedSkus.forEach((sku, index) => {
+                        const prices = this.getPricesForPeriod(sku, days);
+                        datasets.push({
+                            label: sku.name,
+                            data: prices,
+                            borderColor: colors[(index + 1) % colors.length],
+                            borderWidth: 2,
+                            borderDash: [5, 5],
+                            tension: 0.2,
+                            fill: false
+                        });
+                    });
+                    
+                    this.chart.data.labels = labels;
+                    this.chart.data.datasets = datasets;
+                    this.chart.update();
+                },
+                getPricesForPeriod(sku, days) {
+                    const startIndex = sku.priceHistory.length - days;
+                    return sku.priceHistory.slice(startIndex).map(item => item.price);
+                },
+                selectSku(sku) {
+                    this.selectedSku = sku;
+                },
+                isCompared(sku) {
+                    return this.comparedSkus.some(comparedSku => comparedSku.id === sku.id);
+                },
+                toggleCompared(sku) {
+                    if (this.isCompared(sku)) {
+                        this.comparedSkus = this.comparedSkus.filter(comparedSku => comparedSku.id !== sku.id);
+                    } else {
+                        if (this.comparedSkus.length < 5) {
+                            this.comparedSkus.push(sku);
+                        } else {
+                            alert('Максимум 5 товаров для сравнения');
+                        }
+                    }
+                },
+                removeCompared(sku) {
+                    this.comparedSkus = this.comparedSkus.filter(comparedSku => comparedSku.id !== sku.id);
+                },
+                addNewSku() {
+                    if (!this.newSku.trim()) return;
+                    
+                    const newId = 'sku' + (Math.floor(Math.random() * 900) + 100);
+                    const newSkuObj = {
+                        id: newId,
+                        name: this.newSku,
+                        priceHistory: [],
+                        priceChange: 0
+                    };
+                    
+                    this.generatePriceHistoryForSku(newSkuObj);
+                    this.skus.push(newSkuObj);
+                    this.newSku = '';
+                },
+                generatePriceHistoryForSku(sku) {
+                    const today = new Date();
+                    const history = [];
+                    let basePrice = Math.floor(Math.random() * 20000) + 5000;
+                    
+                    for (let i = 90; i >= 0; i--) {
+                        const date = new Date(today);
+                        date.setDate(today.getDate() - i);
+                        
+                        const fluctuation = Math.random() > 0.7 ? (Math.random() * 0.1 - 0.05) * basePrice : 0;
+                        const price = Math.round(basePrice + fluctuation);
+                        
+                        history.push({
+                            date: date.toISOString().split('T')[0],
+                            price
+                        });
+                    }
+                    
+                    const currentPrice = history[history.length - 1].price;
+                    const monthAgoPrice = history[history.length - 30].price;
+                    sku.priceChange = parseFloat(((currentPrice - monthAgoPrice) / monthAgoPrice * 100).toFixed(1));
+                    sku.priceHistory = history;
+                },
+                updateComparisonTable() {
+                    // Очищаем предыдущие значения
+                    this.comparisonRows.forEach(row => {
+                        row.values = {};
+                    });
+                    
+                    // Добавляем данные для выбранного SKU
+                    if (this.selectedSku) {
+                        const prices = this.getPricesForPeriod(this.selectedSku, 30);
+                        const minPrice = Math.min(...prices);
+                        const maxPrice = Math.max(...prices);
+                        const avgPrice = Math.round(prices.reduce((sum, price) => sum + price, 0) / prices.length);
+                        
+                        this.comparisonRows[0].values[this.selectedSku.id] = {
+                            value: prices[prices.length - 1].toLocaleString('ru-RU') + ' ₽',
+                            trend: null
+                        };
+                        this.comparisonRows[1].values[this.selectedSku.id] = {
+                            value: minPrice.toLocaleString('ru-RU') + ' ₽',
+                            trend: null
+                        };
+                        this.comparisonRows[2].values[this.selectedSku.id] = {
+                            value: maxPrice.toLocaleString('ru-RU') + ' ₽',
+                            trend: null
+                        };
+                        this.comparisonRows[3].values[this.selectedSku.id] = {
+                            value: avgPrice.toLocaleString('ru-RU') + ' ₽',
+                            trend: null
+                        };
+                        this.comparisonRows[4].values[this.selectedSku.id] = {
+                            value: Math.floor(Math.random() * 20) + 5,
+                            trend: null
+                        };
+                        this.comparisonRows[5].values[this.selectedSku.id] = {
+                            value: (Math.random() * 3 + 2).toFixed(1) + ' из 5',
+                            trend: null
+                        };
+                        this.comparisonRows[6].values[this.selectedSku.id] = {
+                            value: 'В наличии',
+                            trend: null
+                        };
+                    }
+                    
+                    // Добавляем данные для SKU в сравнении
+                    this.comparedSkus.forEach(sku => {
+                        const prices = this.getPricesForPeriod(sku, 30);
+                        const minPrice = Math.min(...prices);
+                        const maxPrice = Math.max(...prices);
+                        const avgPrice = Math.round(prices.reduce((sum, price) => sum + price, 0) / prices.length);
+                        const prevPrice = prices.length > 1 ? prices[prices.length - 2] : prices[0];
+                        const currentPrice = prices[prices.length - 1];
+                        const priceTrend = currentPrice > prevPrice ? 'up' : currentPrice < prevPrice ? 'down' : null;
+                        
+                        this.comparisonRows[0].values[sku.id] = {
+                            value: currentPrice.toLocaleString('ru-RU') + ' ₽',
+                            trend: priceTrend
+                        };
+                        this.comparisonRows[1].values[sku.id] = {
+                            value: minPrice.toLocaleString('ru-RU') + ' ₽',
+                            trend: null
+                        };
+                        this.comparisonRows[2].values[sku.id] = {
+                            value: maxPrice.toLocaleString('ru-RU') + ' ₽',
+                            trend: null
+                        };
+                        this.comparisonRows[3].values[sku.id] = {
+                            value: avgPrice.toLocaleString('ru-RU') + ' ₽',
+                            trend: null
+                        };
+                        this.comparisonRows[4].values[sku.id] = {
+                            value: Math.floor(Math.random() * 20) + 5,
+                            trend: null
+                        };
+                        this.comparisonRows[5].values[sku.id] = {
+                            value: (Math.random() * 3 + 2).toFixed(1) + ' из 5',
+                            trend: null
+                        };
+                        this.comparisonRows[6].values[sku.id] = {
+                            value: Math.random() > 0.2 ? 'В наличии' : 'Под заказ',
+                            trend: null
+                        };
+                    });
+                },
+                addComparisonColumn() {
+                    if (this.skus.length === 0) return;
+                    
+                    // Найдем SKU, который еще не добавлен для сравнения
+                    const availableSkus = this.skus.filter(sku => 
+                        sku !== this.selectedSku && !this.isCompared(sku)
+                    );
+                    
+                    if (availableSkus.length > 0) {
+                        const randomSku = availableSkus[Math.floor(Math.random() * availableSkus.length)];
+                        this.comparedSkus.push(randomSku);
+                    } else {
+                        alert('Нет доступных SKU для добавления в сравнение');
+                    }
+                },
+                toggleFullscreen() {
+                    const chartContainer = document.querySelector('.chart-container');
+                    if (!document.fullscreenElement) {
+                        if (chartContainer.requestFullscreen) {
+                            chartContainer.requestFullscreen();
+                        }
+                    } else {
+                        if (document.exitFullscreen) {
+                            document.exitFullscreen();
+                        }
+                    }
+                }
+            }
+        });
+    </script>
+</body>
+</html>
