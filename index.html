@@ -19,23 +19,156 @@
         .scrollbar-hide::-webkit-scrollbar {
             display: none;
         }
+        
+        .dark .price-increase {
+            color: #f87171;
+        }
+        .dark .price-decrease {
+            color: #4ade80;
+        }
+        
+        /* Стили для переключателя темы */
+        .theme-toggle {
+            position: relative;
+            display: inline-block;
+            width: 60px;
+            height: 30px;
+        }
+        
+        .theme-toggle input {
+            opacity: 0;
+            width: 0;
+            height: 0;
+        }
+        
+        .theme-slider {
+            position: absolute;
+            cursor: pointer;
+            top: 0;
+            left: 0;
+            right: 0;
+            bottom: 0;
+            background-color: #4b5563;
+            transition: .4s;
+            border-radius: 34px;
+        }
+        
+        .theme-slider:before {
+            position: absolute;
+            content: "";
+            height: 22px;
+            width: 22px;
+            left: 4px;
+            bottom: 4px;
+            background-color: white;
+            transition: .4s;
+            border-radius: 50%;
+        }
+        
+        input:checked + .theme-slider {
+            background-color: #2563eb;
+        }
+        
+        input:checked + .theme-slider:before {
+            transform: translateX(30px);
+        }
+        
+        .theme-slider i {
+            position: absolute;
+            top: 6px;
+            font-size: 18px;
+        }
+        
+        .fa-sun {
+            left: 6px;
+            color: #f59e0b;
+        }
+        
+        .fa-moon {
+            right: 6px;
+            color: #e5e7eb;
+        }
+        
+        .dark {
+            color: #e5e7eb;
+            background-color: #111827;
+        }
+        
+        .dark .bg-white {
+            background-color: #1f2937;
+        }
+        
+        .dark .border-gray-200 {
+            border-color: #374151;
+        }
+        
+        .dark .text-gray-500 {
+            color: #9ca3af;
+        }
+        
+        .dark .text-gray-900 {
+            color: #f3f4f6;
+        }
+        
+        .dark .bg-gray-50 {
+            background-color: #1f2937;
+        }
+        
+        .dark .bg-indigo-50 {
+            background-color: #1e3a8a;
+        }
+        
+        .dark .bg-indigo-600 {
+            background-color: #3b82f6;
+        }
+        
+        .dark .hover\:bg-indigo-700:hover {
+            background-color: #2563eb;
+        }
+        
+        .dark .bg-red-100 {
+            background-color: #7f1d1d;
+        }
+        
+        .dark .bg-green-100 {
+            background-color: #14532d;
+        }
+        
+        .dark .text-red-800 {
+            color: #fecaca;
+        }
+        
+        .dark .text-green-800 {
+            color: #bbf7d0;
+        }
     </style>
 </head>
-<body class="bg-gray-50">
-    <div id="app" class="flex flex-col min-h-screen">
+<body class="bg-gray-50 dark:bg-gray-900 transition-colors duration-300">
+    <div id="app" class="flex flex-col min-h-screen dark:bg-gray-900">
         <!-- Шапка -->
-        <header class="bg-white shadow py-4 px-6">
+        <header class="bg-white dark:bg-gray-800 shadow py-4 px-6">
             <div class="flex justify-between items-center">
-                <h1 class="text-2xl font-bold text-indigo-700">
+                <h1 class="text-2xl font-bold text-indigo-700 dark:text-indigo-400">
                     <i class="fas fa-chart-line mr-2"></i>Сравнение цен на маркетплейсах
                 </h1>
                 <div class="flex items-center space-x-4">
+                    <div class="flex items-center space-x-3">
+                        <i class="fas fa-sun text-yellow-400"></i>
+                        <label class="theme-toggle">
+                            <input type="checkbox" v-model="darkMode" @change="toggleTheme">
+                            <span class="theme-slider">
+                                <i class="fas fa-sun"></i>
+                                <i class="fas fa-moon"></i>
+                            </span>
+                        </label>
+                        <i class="fas fa-moon text-blue-300"></i>
+                    </div>
                     <div class="relative">
                         <input v-model="searchQuery" type="text" placeholder="Поиск SKU..." 
-                               class="pl-10 pr-4 py-2 rounded-lg border border-gray-300 focus:outline-none focus:ring-2 focus:ring-indigo-500">
-                        <i class="fas fa-search absolute left-3 top-3 text-gray-400"></i>
+                               class="pl-10 pr-4 py-2 rounded-lg border border-gray-300 focus:outline-none focus:ring-2 focus:ring-indigo-500 dark:bg-gray-700 dark:border-gray-600 dark:text-white">
+                        <i class="fas fa-search absolute left-3 top-3 text-gray-400 dark:text-gray-300"></i>
                     </div>
-                    <button class="bg-indigo-600 hover:bg-indigo-700 text-white px-4 py-2 rounded-lg flex items-center">
+                    <button class="bg-indigo-600 hover:bg-indigo-700 text-white px-4 py-2 rounded-lg flex items-center dark:bg-indigo-700 dark:hover:bg-indigo-600">
                         <i class="fas fa-download mr-2"></i> Экспорт
                     </button>
                 </div>
@@ -45,14 +178,14 @@
         <!-- Основной контент -->
         <main class="flex flex-1 overflow-hidden">
             <!-- Боковая панель -->
-            <div class="w-1/4 bg-white border-r border-gray-200 flex flex-col">
-                <div class="p-4 border-b border-gray-200">
-                    <h2 class="text-lg font-semibold mb-4">Список SKU</h2>
+            <div class="w-1/4 bg-white dark:bg-gray-800 border-r border-gray-200 dark:border-gray-700 flex flex-col">
+                <div class="p-4 border-b border-gray-200 dark:border-gray-700">
+                    <h2 class="text-lg font-semibold mb-4 dark:text-gray-200">Список SKU</h2>
                     <div class="flex mb-4">
                         <input v-model="newSku" type="text" placeholder="Добавить новый SKU..." 
-                               class="flex-1 px-4 py-2 border border-gray-300 rounded-l-lg focus:outline-none focus:ring-2 focus:ring-indigo-500">
+                               class="flex-1 px-4 py-2 border border-gray-300 rounded-l-lg focus:outline-none focus:ring-2 focus:ring-indigo-500 dark:bg-gray-700 dark:border-gray-600 dark:text-white">
                         <button @click="addNewSku" 
-                                class="bg-indigo-600 hover:bg-indigo-700 text-white px-4 py-2 rounded-r-lg">
+                                class="bg-indigo-600 hover:bg-indigo-700 text-white px-4 py-2 rounded-r-lg dark:bg-indigo-700 dark:hover:bg-indigo-600">
                             <i class="fas fa-plus"></i>
                         </button>
                     </div>
@@ -61,20 +194,20 @@
                 <div class="overflow-y-auto flex-1 scrollbar-hide">
                     <div v-for="(sku, index) in filteredSkus" :key="index" 
                          @click="selectSku(sku)"
-                         :class="{'bg-indigo-50 border-l-4 border-indigo-500': selectedSku && selectedSku.id === sku.id}"
-                         class="p-3 border-b border-gray-200 hover:bg-gray-50 cursor-pointer flex justify-between items-center">
+                         :class="{'bg-indigo-50 dark:bg-indigo-900 border-l-4 border-indigo-500 dark:border-indigo-400': selectedSku && selectedSku.id === sku.id}"
+                         class="p-3 border-b border-gray-200 dark:border-gray-700 hover:bg-gray-50 dark:hover:bg-gray-700 cursor-pointer flex justify-between items-center">
                         <div>
-                            <div class="font-medium">{{ sku.name }}</div>
-                            <div class="text-sm text-gray-500">ID: {{ sku.id }}</div>
+                            <div class="font-medium dark:text-gray-200">{{ sku.name }}</div>
+                            <div class="text-sm text-gray-500 dark:text-gray-400">ID: {{ sku.id }}</div>
                         </div>
                         <div class="flex space-x-2">
                             <span class="text-xs px-2 py-1 rounded-full" 
-                                  :class="sku.priceChange >= 0 ? 'bg-red-100 text-red-800' : 'bg-green-100 text-green-800'">
+                                  :class="sku.priceChange >= 0 ? 'bg-red-100 dark:bg-red-900 text-red-800 dark:text-red-200' : 'bg-green-100 dark:bg-green-900 text-green-800 dark:text-green-200'">
                                 {{ sku.priceChange >= 0 ? '↑' : '↓' }} {{ Math.abs(sku.priceChange) }}%
                             </span>
                             <button @click.stop="toggleCompared(sku)" 
-                                    class="text-gray-500 hover:text-indigo-600">
-                                <i v-if="isCompared(sku)" class="fas fa-minus-circle text-red-500"></i>
+                                    class="text-gray-500 hover:text-indigo-600 dark:text-gray-400 dark:hover:text-indigo-400">
+                                <i v-if="isCompared(sku)" class="fas fa-minus-circle text-red-500 dark:text-red-400"></i>
                                 <i v-else class="fas fa-plus-circle"></i>
                             </button>
                         </div>
@@ -85,19 +218,19 @@
             <!-- Основное рабочее пространство -->
             <div class="flex-1 flex flex-col overflow-hidden">
                 <!-- График -->
-                <div class="bg-white p-4 border-b border-gray-200">
+                <div class="bg-white dark:bg-gray-800 p-4 border-b border-gray-200 dark:border-gray-700">
                     <div class="flex justify-between items-center mb-4">
-                        <h2 class="text-lg font-semibold">
+                        <h2 class="text-lg font-semibold dark:text-gray-200">
                             <span v-if="selectedSku">История цен для {{ selectedSku.name }}</span>
-                            <span v-else>Выберите SKU для отображения графика</span>
+                            <span v-else class="dark:text-gray-400">Выберите SKU для отображения графика</span>
                         </h2>
                         <div class="flex space-x-2">
-                            <select v-model="timeRange" class="border border-gray-300 rounded px-3 py-1">
+                            <select v-model="timeRange" class="border border-gray-300 rounded px-3 py-1 dark:bg-gray-700 dark:border-gray-600 dark:text-white">
                                 <option value="7">7 дней</option>
                                 <option value="30">30 дней</option>
                                 <option value="90">90 дней</option>
                             </select>
-                            <button @click="toggleFullscreen" class="text-gray-500 hover:text-indigo-600">
+                            <button @click="toggleFullscreen" class="text-gray-500 hover:text-indigo-600 dark:text-gray-400 dark:hover:text-indigo-400">
                                 <i class="fas fa-expand"></i>
                             </button>
                         </div>
@@ -108,38 +241,38 @@
                 </div>
 
                 <!-- Таблица сравнения -->
-                <div class="flex-1 overflow-auto">
+                <div class="flex-1 overflow-auto dark:bg-gray-800">
                     <div class="min-w-full">
-                        <table class="min-w-full divide-y divide-gray-200">
-                            <thead class="bg-gray-50 sticky top-0">
+                        <table class="min-w-full divide-y divide-gray-200 dark:divide-gray-700">
+                            <thead class="bg-gray-50 dark:bg-gray-700 sticky top-0">
                                 <tr>
-                                    <th scope="col" class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
+                                    <th scope="col" class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider dark:text-gray-300">
                                         Характеристика
                                     </th>
                                     <th v-for="(sku, index) in comparedSkus" :key="index" scope="col" 
-                                        class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
+                                        class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider dark:text-gray-300">
                                         <div class="flex items-center justify-between">
                                             <span>{{ sku.name }}</span>
-                                            <button @click="removeCompared(sku)" class="text-gray-400 hover:text-red-500">
+                                            <button @click="removeCompared(sku)" class="text-gray-400 hover:text-red-500 dark:hover:text-red-400">
                                                 <i class="fas fa-times"></i>
                                             </button>
                                         </div>
                                     </th>
                                     <th scope="col" class="px-6 py-3 text-center">
                                         <button @click="addComparisonColumn" 
-                                                class="text-indigo-600 hover:text-indigo-800 text-sm font-medium">
+                                                class="text-indigo-600 hover:text-indigo-800 dark:text-indigo-400 dark:hover:text-indigo-300 text-sm font-medium">
                                             <i class="fas fa-plus mr-1"></i> Добавить
                                         </button>
                                     </th>
                                 </tr>
                             </thead>
-                            <tbody class="bg-white divide-y divide-gray-200">
-                                <tr v-for="(row, rowIndex) in comparisonRows" :key="rowIndex">
-                                    <td class="px-6 py-4 whitespace-nowrap text-sm font-medium text-gray-900">
+                            <tbody class="bg-white divide-y divide-gray-200 dark:bg-gray-800 dark:divide-gray-700">
+                                <tr v-for="(row, rowIndex) in comparisonRows" :key="rowIndex" class="hover:bg-gray-50 dark:hover:bg-gray-700">
+                                    <td class="px-6 py-4 whitespace-nowrap text-sm font-medium text-gray-900 dark:text-gray-200">
                                         {{ row.characteristic }}
                                     </td>
                                     <td v-for="(sku, skuIndex) in comparedSkus" :key="skuIndex" 
-                                        class="px-6 py-4 whitespace-nowrap text-sm text-gray-500">
+                                        class="px-6 py-4 whitespace-nowrap text-sm text-gray-500 dark:text-gray-300">
                                         <div v-if="row.values[sku.id]">
                                             {{ row.values[sku.id].value }}
                                             <span v-if="row.values[sku.id].trend === 'up'" 
@@ -159,7 +292,7 @@
         </main>
 
         <!-- Футер -->
-        <footer class="bg-white border-t border-gray-200 py-4 px-6 text-center text-sm text-gray-500">
+        <footer class="bg-white dark:bg-gray-800 border-t border-gray-200 dark:border-gray-700 py-4 px-6 text-center text-sm text-gray-500 dark:text-gray-400">
             <p>Инструмент сравнения цен на маркетплейсах • {{ new Date().getFullYear() }}</p>
         </footer>
     </div>
@@ -173,6 +306,7 @@
                 timeRange: '30',
                 selectedSku: null,
                 comparedSkus: [],
+                darkMode: false,
                 skus: [
                     { id: 'sku001', name: 'Смартфон Samsung Galaxy S21', priceHistory: [], priceChange: 2.5 },
                     { id: 'sku002', name: 'Ноутбук Apple MacBook Air', priceHistory: [], priceChange: -1.2 },
@@ -215,13 +349,37 @@
                 },
                 timeRange() {
                     this.updateChart();
+                },
+                darkMode() {
+                    this.updateChart();
                 }
             },
             mounted() {
+                // Проверяем сохранённую тему или системные настройки
+                if (localStorage.getItem('darkMode')) {
+                    this.darkMode = localStorage.getItem('darkMode') === 'true';
+                } else {
+                    this.darkMode = window.matchMedia && window.matchMedia('(prefers-color-scheme: dark)').matches;
+                }
+                
+                this.applyTheme();
                 this.generatePriceHistory();
                 this.initChart();
             },
             methods: {
+                applyTheme() {
+                    if (this.darkMode) {
+                        document.body.classList.add('dark');
+                    } else {
+                        document.body.classList.remove('dark');
+                    }
+                },
+                toggleTheme() {
+                    this.darkMode = !this.darkMode;
+                    localStorage.setItem('darkMode', this.darkMode);
+                    this.applyTheme();
+                    this.updateChart();
+                },
                 generatePriceHistory() {
                     const today = new Date();
                     this.skus.forEach(sku => {
@@ -263,45 +421,61 @@
                             labels: [],
                             datasets: []
                         },
-                        options: {
-                            responsive: true,
-                            maintainAspectRatio: false,
-                            scales: {
-                                y: {
-                                    beginAtZero: false,
-                                    grid: {
-                                        color: 'rgba(0, 0, 0, 0.05)'
-                                    },
-                                    ticks: {
-                                        callback: function(value) {
-                                            return value.toLocaleString('ru-RU') + ' ₽';
-                                        }
-                                    }
+                        options: this.getChartOptions()
+                    });
+                },
+                getChartOptions() {
+                    const isDark = this.darkMode;
+                    const textColor = isDark ? '#e5e7eb' : '#374151';
+                    const gridColor = isDark ? 'rgba(55, 65, 81, 0.5)' : 'rgba(0, 0, 0, 0.05)';
+                    
+                    return {
+                        responsive: true,
+                        maintainAspectRatio: false,
+                        scales: {
+                            y: {
+                                beginAtZero: false,
+                                grid: {
+                                    color: gridColor
                                 },
-                                x: {
-                                    grid: {
-                                        display: false
+                                ticks: {
+                                    color: textColor,
+                                    callback: function(value) {
+                                        return value.toLocaleString('ru-RU') + ' ₽';
                                     }
                                 }
                             },
-                            plugins: {
-                                tooltip: {
-                                    callbacks: {
-                                        label: function(context) {
-                                            return context.dataset.label + ': ' + context.parsed.y.toLocaleString('ru-RU') + ' ₽';
-                                        }
+                            x: {
+                                grid: {
+                                    display: false
+                                },
+                                ticks: {
+                                    color: textColor
+                                }
+                            }
+                        },
+                        plugins: {
+                            tooltip: {
+                                callbacks: {
+                                    label: function(context) {
+                                        return context.dataset.label + ': ' + context.parsed.y.toLocaleString('ru-RU') + ' ₽';
                                     }
                                 },
-                                legend: {
-                                    position: 'top',
-                                    labels: {
-                                        boxWidth: 12,
-                                        padding: 20
-                                    }
+                                backgroundColor: isDark ? '#1f2937' : '#ffffff',
+                                titleColor: isDark ? '#e5e7eb' : '#374151',
+                                bodyColor: isDark ? '#e5e7eb' : '#374151',
+                                borderColor: isDark ? '#374151' : '#e5e7eb'
+                            },
+                            legend: {
+                                position: 'top',
+                                labels: {
+                                    boxWidth: 12,
+                                    padding: 20,
+                                    color: textColor
                                 }
                             }
                         }
-                    });
+                    };
                 },
                 updateChart() {
                     if (!this.chart) return;
@@ -333,7 +507,7 @@
                             label: this.selectedSku.name,
                             data: prices,
                             borderColor: colors[0],
-                            backgroundColor: 'rgba(79, 70, 229, 0.1)',
+                            backgroundColor: this.darkMode ? 'rgba(79, 70, 229, 0.2)' : 'rgba(79, 70, 229, 0.1)',
                             borderWidth: 3,
                             tension: 0.2,
                             fill: false
@@ -353,6 +527,9 @@
                             fill: false
                         });
                     });
+                    
+                    // Обновляем опции для темной темы
+                    this.chart.options = this.getChartOptions();
                     
                     this.chart.data.labels = labels;
                     this.chart.data.datasets = datasets;
