@@ -3,7 +3,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Сравнение цен на маркетплейсах</title>
+    <title>Инструмент сравнения цен</title>
     <script src="https://cdn.jsdelivr.net/npm/vue@2.6.14/dist/vue.js"></script>
     <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
     <script src="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/js/all.min.js"></script>
@@ -141,6 +141,16 @@
         .dark .text-green-800 {
             color: #bbf7d0;
         }
+        
+        .competitor-badge {
+            background-color: #fde68a;
+            color: #92400e;
+        }
+        
+        .dark .competitor-badge {
+            background-color: #92400e;
+            color: #fde68a;
+        }
     </style>
 </head>
 <body class="bg-gray-50 dark:bg-gray-900 transition-colors duration-300">
@@ -149,7 +159,7 @@
         <header class="bg-white dark:bg-gray-800 shadow py-4 px-6">
             <div class="flex justify-between items-center">
                 <h1 class="text-2xl font-bold text-indigo-700 dark:text-indigo-400">
-                    <i class="fas fa-chart-line mr-2"></i>Сравнение цен на маркетплейсах
+                    <i class="fas fa-store mr-2"></i>Инструмент сравнения цен
                 </h1>
                 <div class="flex items-center space-x-4">
                     <div class="flex items-center space-x-3">
@@ -168,23 +178,30 @@
                                class="pl-10 pr-4 py-2 rounded-lg border border-gray-300 focus:outline-none focus:ring-2 focus:ring-indigo-500 dark:bg-gray-700 dark:border-gray-600 dark:text-white">
                         <i class="fas fa-search absolute left-3 top-3 text-gray-400 dark:text-gray-300"></i>
                     </div>
-                    <button class="bg-indigo-600 hover:bg-indigo-700 text-white px-4 py-2 rounded-lg flex items-center dark:bg-indigo-700 dark:hover:bg-indigo-600">
-                        <i class="fas fa-download mr-2"></i> Экспорт
-                    </button>
+                    <div class="flex items-center space-x-2">
+                        <div class="text-sm font-medium dark:text-gray-300">
+                            <i class="fas fa-user mr-1"></i>Менеджер: {{ managerName }}
+                        </div>
+                        <button class="bg-indigo-600 hover:bg-indigo-700 text-white px-4 py-2 rounded-lg flex items-center dark:bg-indigo-700 dark:hover:bg-indigo-600">
+                            <i class="fas fa-download mr-2"></i> Экспорт
+                        </button>
+                    </div>
                 </div>
             </div>
         </header>
 
         <!-- Основной контент -->
         <main class="flex flex-1 overflow-hidden">
-            <!-- Боковая панель -->
+            <!-- Боковая панель - SKU менеджера -->
             <div class="w-1/4 bg-white dark:bg-gray-800 border-r border-gray-200 dark:border-gray-700 flex flex-col">
                 <div class="p-4 border-b border-gray-200 dark:border-gray-700">
-                    <h2 class="text-lg font-semibold mb-4 dark:text-gray-200">Список SKU</h2>
+                    <h2 class="text-lg font-semibold mb-4 dark:text-gray-200">
+                        <i class="fas fa-boxes mr-2"></i>Мои товары
+                    </h2>
                     <div class="flex mb-4">
                         <input v-model="newSku" type="text" placeholder="Добавить новый SKU..." 
                                class="flex-1 px-4 py-2 border border-gray-300 rounded-l-lg focus:outline-none focus:ring-2 focus:ring-indigo-500 dark:bg-gray-700 dark:border-gray-600 dark:text-white">
-                        <button @click="addNewSku" 
+                        <button @click="addNewManagerSku" 
                                 class="bg-indigo-600 hover:bg-indigo-700 text-white px-4 py-2 rounded-r-lg dark:bg-indigo-700 dark:hover:bg-indigo-600">
                             <i class="fas fa-plus"></i>
                         </button>
@@ -192,9 +209,9 @@
                 </div>
                 
                 <div class="overflow-y-auto flex-1 scrollbar-hide">
-                    <div v-for="(sku, index) in filteredSkus" :key="index" 
-                         @click="selectSku(sku)"
-                         :class="{'bg-indigo-50 dark:bg-indigo-900 border-l-4 border-indigo-500 dark:border-indigo-400': selectedSku && selectedSku.id === sku.id}"
+                    <div v-for="(sku, index) in filteredManagerSkus" :key="index" 
+                         @click="selectManagerSku(sku)"
+                         :class="{'bg-indigo-50 dark:bg-indigo-900 border-l-4 border-indigo-500 dark:border-indigo-400': selectedManagerSku && selectedManagerSku.id === sku.id}"
                          class="p-3 border-b border-gray-200 dark:border-gray-700 hover:bg-gray-50 dark:hover:bg-gray-700 cursor-pointer flex justify-between items-center">
                         <div>
                             <div class="font-medium dark:text-gray-200">{{ sku.name }}</div>
@@ -205,11 +222,6 @@
                                   :class="sku.priceChange >= 0 ? 'bg-red-100 dark:bg-red-900 text-red-800 dark:text-red-200' : 'bg-green-100 dark:bg-green-900 text-green-800 dark:text-green-200'">
                                 {{ sku.priceChange >= 0 ? '↑' : '↓' }} {{ Math.abs(sku.priceChange) }}%
                             </span>
-                            <button @click.stop="toggleCompared(sku)" 
-                                    class="text-gray-500 hover:text-indigo-600 dark:text-gray-400 dark:hover:text-indigo-400">
-                                <i v-if="isCompared(sku)" class="fas fa-minus-circle text-red-500 dark:text-red-400"></i>
-                                <i v-else class="fas fa-plus-circle"></i>
-                            </button>
                         </div>
                     </div>
                 </div>
@@ -221,8 +233,8 @@
                 <div class="bg-white dark:bg-gray-800 p-4 border-b border-gray-200 dark:border-gray-700">
                     <div class="flex justify-between items-center mb-4">
                         <h2 class="text-lg font-semibold dark:text-gray-200">
-                            <span v-if="selectedSku">История цен для {{ selectedSku.name }}</span>
-                            <span v-else class="dark:text-gray-400">Выберите SKU для отображения графика</span>
+                            <span v-if="selectedManagerSku">История цен для {{ selectedManagerSku.name }}</span>
+                            <span v-else class="dark:text-gray-400">Выберите ваш товар для сравнения</span>
                         </h2>
                         <div class="flex space-x-2">
                             <select v-model="timeRange" class="border border-gray-300 rounded px-3 py-1 dark:bg-gray-700 dark:border-gray-600 dark:text-white">
@@ -240,7 +252,7 @@
                     </div>
                 </div>
 
-                <!-- Таблица сравнения -->
+                <!-- Таблица сравнения с конкурентами -->
                 <div class="flex-1 overflow-auto dark:bg-gray-800">
                     <div class="min-w-full">
                         <table class="min-w-full divide-y divide-gray-200 dark:divide-gray-700">
@@ -249,19 +261,27 @@
                                     <th scope="col" class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider dark:text-gray-300">
                                         Характеристика
                                     </th>
-                                    <th v-for="(sku, index) in comparedSkus" :key="index" scope="col" 
+                                    <th v-if="selectedManagerSku" scope="col" class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider dark:text-gray-300">
+                                        <div class="flex items-center justify-between">
+                                            <span>Ваш товар: {{ selectedManagerSku.name }}</span>
+                                        </div>
+                                    </th>
+                                    <th v-for="(competitor, index) in comparedCompetitors" :key="index" scope="col" 
                                         class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider dark:text-gray-300">
                                         <div class="flex items-center justify-between">
-                                            <span>{{ sku.name }}</span>
-                                            <button @click="removeCompared(sku)" class="text-gray-400 hover:text-red-500 dark:hover:text-red-400">
+                                            <span>
+                                                <span class="competitor-badge text-xs px-2 py-1 rounded mr-2">Конкурент</span>
+                                                {{ competitor.name }}
+                                            </span>
+                                            <button @click="removeCompetitor(competitor)" class="text-gray-400 hover:text-red-500 dark:hover:text-red-400">
                                                 <i class="fas fa-times"></i>
                                             </button>
                                         </div>
                                     </th>
                                     <th scope="col" class="px-6 py-3 text-center">
-                                        <button @click="addComparisonColumn" 
+                                        <button @click="addCompetitor" 
                                                 class="text-indigo-600 hover:text-indigo-800 dark:text-indigo-400 dark:hover:text-indigo-300 text-sm font-medium">
-                                            <i class="fas fa-plus mr-1"></i> Добавить
+                                            <i class="fas fa-plus mr-1"></i> Добавить конкурента
                                         </button>
                                     </th>
                                 </tr>
@@ -271,13 +291,23 @@
                                     <td class="px-6 py-4 whitespace-nowrap text-sm font-medium text-gray-900 dark:text-gray-200">
                                         {{ row.characteristic }}
                                     </td>
-                                    <td v-for="(sku, skuIndex) in comparedSkus" :key="skuIndex" 
-                                        class="px-6 py-4 whitespace-nowrap text-sm text-gray-500 dark:text-gray-300">
-                                        <div v-if="row.values[sku.id]">
-                                            {{ row.values[sku.id].value }}
-                                            <span v-if="row.values[sku.id].trend === 'up'" 
+                                    <td v-if="selectedManagerSku" class="px-6 py-4 whitespace-nowrap text-sm text-gray-500 dark:text-gray-300">
+                                        <div v-if="row.values.manager">
+                                            {{ row.values.manager.value }}
+                                            <span v-if="row.values.manager.trend === 'up'" 
                                                   class="price-increase ml-1"><i class="fas fa-arrow-up"></i></span>
-                                            <span v-else-if="row.values[sku.id].trend === 'down'" 
+                                            <span v-else-if="row.values.manager.trend === 'down'" 
+                                                  class="price-decrease ml-1"><i class="fas fa-arrow-down"></i></span>
+                                        </div>
+                                        <div v-else class="text-gray-400">-</div>
+                                    </td>
+                                    <td v-for="(competitor, compIndex) in comparedCompetitors" :key="compIndex" 
+                                        class="px-6 py-4 whitespace-nowrap text-sm text-gray-500 dark:text-gray-300">
+                                        <div v-if="row.values[competitor.id]">
+                                            {{ row.values[competitor.id].value }}
+                                            <span v-if="row.values[competitor.id].trend === 'up'" 
+                                                  class="price-increase ml-1"><i class="fas fa-arrow-up"></i></span>
+                                            <span v-else-if="row.values[competitor.id].trend === 'down'" 
                                                   class="price-decrease ml-1"><i class="fas fa-arrow-down"></i></span>
                                         </div>
                                         <div v-else class="text-gray-400">-</div>
@@ -301,21 +331,29 @@
         new Vue({
             el: '#app',
             data: {
+                managerName: "Иван Петров",
                 searchQuery: '',
                 newSku: '',
                 timeRange: '30',
-                selectedSku: null,
-                comparedSkus: [],
+                selectedManagerSku: null,
+                comparedCompetitors: [],
                 darkMode: false,
-                skus: [
-                    { id: 'sku001', name: 'Смартфон Samsung Galaxy S21', priceHistory: [], priceChange: 2.5 },
-                    { id: 'sku002', name: 'Ноутбук Apple MacBook Air', priceHistory: [], priceChange: -1.2 },
-                    { id: 'sku003', name: 'Наушники Sony WH-1000XM4', priceHistory: [], priceChange: 0.8 },
-                    { id: 'sku004', name: 'Умные часы Apple Watch Series 7', priceHistory: [], priceChange: 3.1 },
-                    { id: 'sku005', name: 'Планшет Samsung Galaxy Tab S7', priceHistory: [], priceChange: -0.5 },
-                    { id: 'sku006', name: 'Фитнес-браслет Xiaomi Mi Band 6', priceHistory: [], priceChange: 1.7 },
-                    { id: 'sku007', name: 'Игровая консоль PlayStation 5', priceHistory: [], priceChange: -2.3 },
-                    { id: 'sku008', name: 'Электронная книга Amazon Kindle', priceHistory: [], priceChange: 0.4 }
+                managerSkus: [
+                    { id: 'mgr001', name: 'Смартфон Samsung Galaxy S21', priceHistory: [], priceChange: 2.5 },
+                    { id: 'mgr002', name: 'Ноутбук Apple MacBook Air', priceHistory: [], priceChange: -1.2 },
+                    { id: 'mgr003', name: 'Наушники Sony WH-1000XM4', priceHistory: [], priceChange: 0.8 },
+                    { id: 'mgr004', name: 'Умные часы Apple Watch', priceHistory: [], priceChange: 3.1 },
+                    { id: 'mgr005', name: 'Планшет Samsung Galaxy Tab', priceHistory: [], priceChange: -0.5 },
+                ],
+                competitorSkus: [
+                    { id: 'comp001', name: 'Смартфон Galaxy S21 (Конкурент 1)', priceHistory: [], priceChange: 1.8 },
+                    { id: 'comp002', name: 'MacBook Air (Конкурент 2)', priceHistory: [], priceChange: -0.7 },
+                    { id: 'comp003', name: 'Наушники Sony (Конкурент 1)', priceHistory: [], priceChange: 2.1 },
+                    { id: 'comp004', name: 'Apple Watch (Конкурент 3)', priceHistory: [], priceChange: 4.2 },
+                    { id: 'comp005', name: 'Планшет Galaxy Tab (Конкурент 2)', priceHistory: [], priceChange: -1.3 },
+                    { id: 'comp006', name: 'Фитнес-браслет Xiaomi (Конкурент 4)', priceHistory: [], priceChange: 1.7 },
+                    { id: 'comp007', name: 'PlayStation 5 (Конкурент 5)', priceHistory: [], priceChange: -2.3 },
+                    { id: 'comp008', name: 'Электронная книга Kindle (Конкурент 3)', priceHistory: [], priceChange: 0.4 }
                 ],
                 chart: null,
                 comparisonRows: [
@@ -325,25 +363,27 @@
                     { characteristic: 'Средняя цена', values: {} },
                     { characteristic: 'Количество предложений', values: {} },
                     { characteristic: 'Рейтинг товара', values: {} },
-                    { characteristic: 'Доступность', values: {} }
+                    { characteristic: 'Доступность', values: {} },
+                    { characteristic: 'Доставка', values: {} },
+                    { characteristic: 'Гарантия', values: {} }
                 ]
             },
             computed: {
-                filteredSkus() {
-                    if (!this.searchQuery) return this.skus;
+                filteredManagerSkus() {
+                    if (!this.searchQuery) return this.managerSkus;
                     const query = this.searchQuery.toLowerCase();
-                    return this.skus.filter(sku => 
+                    return this.managerSkus.filter(sku => 
                         sku.name.toLowerCase().includes(query) || 
                         sku.id.toLowerCase().includes(query)
                     );
                 }
             },
             watch: {
-                selectedSku() {
+                selectedManagerSku() {
                     this.updateChart();
                     this.updateComparisonTable();
                 },
-                comparedSkus() {
+                comparedCompetitors() {
                     this.updateChart();
                     this.updateComparisonTable();
                 },
@@ -365,6 +405,11 @@
                 this.applyTheme();
                 this.generatePriceHistory();
                 this.initChart();
+                
+                // Выбираем первый SKU менеджера по умолчанию
+                if (this.managerSkus.length > 0) {
+                    this.selectedManagerSku = this.managerSkus[0];
+                }
             },
             methods: {
                 applyTheme() {
@@ -382,36 +427,42 @@
                 },
                 generatePriceHistory() {
                     const today = new Date();
-                    this.skus.forEach(sku => {
-                        const history = [];
-                        let basePrice = Math.floor(Math.random() * 20000) + 5000;
-                        
-                        for (let i = 90; i >= 0; i--) {
-                            const date = new Date(today);
-                            date.setDate(today.getDate() - i);
-                            
-                            // Генерация колебаний цен
-                            const fluctuation = Math.random() > 0.7 ? (Math.random() * 0.1 - 0.05) * basePrice : 0;
-                            const price = Math.round(basePrice + fluctuation);
-                            
-                            history.push({
-                                date: date.toISOString().split('T')[0],
-                                price
-                            });
-                        }
-                        
-                        // Рассчитаем изменение цены за последние 30 дней
-                        const currentPrice = history[history.length - 1].price;
-                        const monthAgoPrice = history[history.length - 30].price;
-                        sku.priceChange = parseFloat(((currentPrice - monthAgoPrice) / monthAgoPrice * 100).toFixed(1));
-                        
-                        sku.priceHistory = history;
+                    
+                    // Генерация данных для SKU менеджера
+                    this.managerSkus.forEach(sku => {
+                        this.generateSkuPriceHistory(sku);
                     });
                     
-                    // Выбираем первый SKU по умолчанию
-                    if (this.skus.length > 0) {
-                        this.selectedSku = this.skus[0];
+                    // Генерация данных для SKU конкурентов
+                    this.competitorSkus.forEach(sku => {
+                        this.generateSkuPriceHistory(sku);
+                    });
+                },
+                generateSkuPriceHistory(sku) {
+                    const today = new Date();
+                    const history = [];
+                    let basePrice = Math.floor(Math.random() * 20000) + 5000;
+                    
+                    for (let i = 90; i >= 0; i--) {
+                        const date = new Date(today);
+                        date.setDate(today.getDate() - i);
+                        
+                        // Генерация колебаний цен
+                        const fluctuation = Math.random() > 0.7 ? (Math.random() * 0.1 - 0.05) * basePrice : 0;
+                        const price = Math.round(basePrice + fluctuation);
+                        
+                        history.push({
+                            date: date.toISOString().split('T')[0],
+                            price
+                        });
                     }
+                    
+                    // Рассчитаем изменение цены за последние 30 дней
+                    const currentPrice = history[history.length - 1].price;
+                    const monthAgoPrice = history[history.length - 30].price;
+                    sku.priceChange = parseFloat(((currentPrice - monthAgoPrice) / monthAgoPrice * 100).toFixed(1));
+                    
+                    sku.priceHistory = history;
                 },
                 initChart() {
                     const ctx = document.getElementById('priceChart').getContext('2d');
@@ -492,19 +543,19 @@
                     
                     const datasets = [];
                     const colors = [
-                        '#4f46e5', // Индиго
-                        '#ef4444', // Красный
-                        '#10b981', // Зеленый
-                        '#f59e0b', // Желтый
-                        '#8b5cf6', // Фиолетовый
-                        '#ec4899'  // Розовый
+                        '#4f46e5', // Индиго - ваш товар
+                        '#ef4444', // Красный - конкурент 1
+                        '#10b981', // Зеленый - конкурент 2
+                        '#f59e0b', // Желтый - конкурент 3
+                        '#8b5cf6', // Фиолетовый - конкурент 4
+                        '#ec4899'  // Розовый - конкурент 5
                     ];
                     
-                    // Добавить основной выбранный SKU
-                    if (this.selectedSku) {
-                        const prices = this.getPricesForPeriod(this.selectedSku, days);
+                    // Добавить товар менеджера
+                    if (this.selectedManagerSku) {
+                        const prices = this.getPricesForPeriod(this.selectedManagerSku, days);
                         datasets.push({
-                            label: this.selectedSku.name,
+                            label: `Ваш товар: ${this.selectedManagerSku.name}`,
                             data: prices,
                             borderColor: colors[0],
                             backgroundColor: this.darkMode ? 'rgba(79, 70, 229, 0.2)' : 'rgba(79, 70, 229, 0.1)',
@@ -514,11 +565,11 @@
                         });
                     }
                     
-                    // Добавить SKU для сравнения
-                    this.comparedSkus.forEach((sku, index) => {
-                        const prices = this.getPricesForPeriod(sku, days);
+                    // Добавить конкурентов
+                    this.comparedCompetitors.forEach((competitor, index) => {
+                        const prices = this.getPricesForPeriod(competitor, days);
                         datasets.push({
-                            label: sku.name,
+                            label: competitor.name,
                             data: prices,
                             borderColor: colors[(index + 1) % colors.length],
                             borderWidth: 2,
@@ -539,30 +590,13 @@
                     const startIndex = sku.priceHistory.length - days;
                     return sku.priceHistory.slice(startIndex).map(item => item.price);
                 },
-                selectSku(sku) {
-                    this.selectedSku = sku;
+                selectManagerSku(sku) {
+                    this.selectedManagerSku = sku;
                 },
-                isCompared(sku) {
-                    return this.comparedSkus.some(comparedSku => comparedSku.id === sku.id);
-                },
-                toggleCompared(sku) {
-                    if (this.isCompared(sku)) {
-                        this.comparedSkus = this.comparedSkus.filter(comparedSku => comparedSku.id !== sku.id);
-                    } else {
-                        if (this.comparedSkus.length < 5) {
-                            this.comparedSkus.push(sku);
-                        } else {
-                            alert('Максимум 5 товаров для сравнения');
-                        }
-                    }
-                },
-                removeCompared(sku) {
-                    this.comparedSkus = this.comparedSkus.filter(comparedSku => comparedSku.id !== sku.id);
-                },
-                addNewSku() {
+                addNewManagerSku() {
                     if (!this.newSku.trim()) return;
                     
-                    const newId = 'sku' + (Math.floor(Math.random() * 900) + 100);
+                    const newId = 'mgr' + (Math.floor(Math.random() * 900) + 100);
                     const newSkuObj = {
                         id: newId,
                         name: this.newSku,
@@ -570,32 +604,34 @@
                         priceChange: 0
                     };
                     
-                    this.generatePriceHistoryForSku(newSkuObj);
-                    this.skus.push(newSkuObj);
+                    this.generateSkuPriceHistory(newSkuObj);
+                    this.managerSkus.push(newSkuObj);
                     this.newSku = '';
-                },
-                generatePriceHistoryForSku(sku) {
-                    const today = new Date();
-                    const history = [];
-                    let basePrice = Math.floor(Math.random() * 20000) + 5000;
                     
-                    for (let i = 90; i >= 0; i--) {
-                        const date = new Date(today);
-                        date.setDate(today.getDate() - i);
-                        
-                        const fluctuation = Math.random() > 0.7 ? (Math.random() * 0.1 - 0.05) * basePrice : 0;
-                        const price = Math.round(basePrice + fluctuation);
-                        
-                        history.push({
-                            date: date.toISOString().split('T')[0],
-                            price
-                        });
+                    if (!this.selectedManagerSku) {
+                        this.selectedManagerSku = newSkuObj;
+                    }
+                },
+                addCompetitor() {
+                    if (this.comparedCompetitors.length >= 5) {
+                        alert('Максимум 5 конкурентов для сравнения');
+                        return;
                     }
                     
-                    const currentPrice = history[history.length - 1].price;
-                    const monthAgoPrice = history[history.length - 30].price;
-                    sku.priceChange = parseFloat(((currentPrice - monthAgoPrice) / monthAgoPrice * 100).toFixed(1));
-                    sku.priceHistory = history;
+                    // Выбираем случайного конкурента, которого еще не добавили
+                    const availableCompetitors = this.competitorSkus.filter(comp => 
+                        !this.comparedCompetitors.some(c => c.id === comp.id)
+                    );
+                    
+                    if (availableCompetitors.length > 0) {
+                        const randomIndex = Math.floor(Math.random() * availableCompetitors.length);
+                        this.comparedCompetitors.push(availableCompetitors[randomIndex]);
+                    } else {
+                        alert('Все доступные конкуренты уже добавлены');
+                    }
+                },
+                removeCompetitor(competitor) {
+                    this.comparedCompetitors = this.comparedCompetitors.filter(c => c.id !== competitor.id);
                 },
                 updateComparisonTable() {
                     // Очищаем предыдущие значения
@@ -603,46 +639,9 @@
                         row.values = {};
                     });
                     
-                    // Добавляем данные для выбранного SKU
-                    if (this.selectedSku) {
-                        const prices = this.getPricesForPeriod(this.selectedSku, 30);
-                        const minPrice = Math.min(...prices);
-                        const maxPrice = Math.max(...prices);
-                        const avgPrice = Math.round(prices.reduce((sum, price) => sum + price, 0) / prices.length);
-                        
-                        this.comparisonRows[0].values[this.selectedSku.id] = {
-                            value: prices[prices.length - 1].toLocaleString('ru-RU') + ' ₽',
-                            trend: null
-                        };
-                        this.comparisonRows[1].values[this.selectedSku.id] = {
-                            value: minPrice.toLocaleString('ru-RU') + ' ₽',
-                            trend: null
-                        };
-                        this.comparisonRows[2].values[this.selectedSku.id] = {
-                            value: maxPrice.toLocaleString('ru-RU') + ' ₽',
-                            trend: null
-                        };
-                        this.comparisonRows[3].values[this.selectedSku.id] = {
-                            value: avgPrice.toLocaleString('ru-RU') + ' ₽',
-                            trend: null
-                        };
-                        this.comparisonRows[4].values[this.selectedSku.id] = {
-                            value: Math.floor(Math.random() * 20) + 5,
-                            trend: null
-                        };
-                        this.comparisonRows[5].values[this.selectedSku.id] = {
-                            value: (Math.random() * 3 + 2).toFixed(1) + ' из 5',
-                            trend: null
-                        };
-                        this.comparisonRows[6].values[this.selectedSku.id] = {
-                            value: 'В наличии',
-                            trend: null
-                        };
-                    }
-                    
-                    // Добавляем данные для SKU в сравнении
-                    this.comparedSkus.forEach(sku => {
-                        const prices = this.getPricesForPeriod(sku, 30);
+                    // Добавляем данные для товара менеджера
+                    if (this.selectedManagerSku) {
+                        const prices = this.getPricesForPeriod(this.selectedManagerSku, 30);
                         const minPrice = Math.min(...prices);
                         const maxPrice = Math.max(...prices);
                         const avgPrice = Math.round(prices.reduce((sum, price) => sum + price, 0) / prices.length);
@@ -650,50 +649,91 @@
                         const currentPrice = prices[prices.length - 1];
                         const priceTrend = currentPrice > prevPrice ? 'up' : currentPrice < prevPrice ? 'down' : null;
                         
-                        this.comparisonRows[0].values[sku.id] = {
+                        this.comparisonRows[0].values.manager = {
                             value: currentPrice.toLocaleString('ru-RU') + ' ₽',
                             trend: priceTrend
                         };
-                        this.comparisonRows[1].values[sku.id] = {
+                        this.comparisonRows[1].values.manager = {
                             value: minPrice.toLocaleString('ru-RU') + ' ₽',
                             trend: null
                         };
-                        this.comparisonRows[2].values[sku.id] = {
+                        this.comparisonRows[2].values.manager = {
                             value: maxPrice.toLocaleString('ru-RU') + ' ₽',
                             trend: null
                         };
-                        this.comparisonRows[3].values[sku.id] = {
+                        this.comparisonRows[3].values.manager = {
                             value: avgPrice.toLocaleString('ru-RU') + ' ₽',
                             trend: null
                         };
-                        this.comparisonRows[4].values[sku.id] = {
+                        this.comparisonRows[4].values.manager = {
+                            value: Math.floor(Math.random() * 5) + 1,
+                            trend: null
+                        };
+                        this.comparisonRows[5].values.manager = {
+                            value: (Math.random() * 1 + 4).toFixed(1) + ' из 5',
+                            trend: null
+                        };
+                        this.comparisonRows[6].values.manager = {
+                            value: 'В наличии',
+                            trend: null
+                        };
+                        this.comparisonRows[7].values.manager = {
+                            value: '1-3 дня',
+                            trend: null
+                        };
+                        this.comparisonRows[8].values.manager = {
+                            value: '1 год',
+                            trend: null
+                        };
+                    }
+                    
+                    // Добавляем данные для конкурентов
+                    this.comparedCompetitors.forEach(competitor => {
+                        const prices = this.getPricesForPeriod(competitor, 30);
+                        const minPrice = Math.min(...prices);
+                        const maxPrice = Math.max(...prices);
+                        const avgPrice = Math.round(prices.reduce((sum, price) => sum + price, 0) / prices.length);
+                        const prevPrice = prices.length > 1 ? prices[prices.length - 2] : prices[0];
+                        const currentPrice = prices[prices.length - 1];
+                        const priceTrend = currentPrice > prevPrice ? 'up' : currentPrice < prevPrice ? 'down' : null;
+                        
+                        this.comparisonRows[0].values[competitor.id] = {
+                            value: currentPrice.toLocaleString('ru-RU') + ' ₽',
+                            trend: priceTrend
+                        };
+                        this.comparisonRows[1].values[competitor.id] = {
+                            value: minPrice.toLocaleString('ru-RU') + ' ₽',
+                            trend: null
+                        };
+                        this.comparisonRows[2].values[competitor.id] = {
+                            value: maxPrice.toLocaleString('ru-RU') + ' ₽',
+                            trend: null
+                        };
+                        this.comparisonRows[3].values[competitor.id] = {
+                            value: avgPrice.toLocaleString('ru-RU') + ' ₽',
+                            trend: null
+                        };
+                        this.comparisonRows[4].values[competitor.id] = {
                             value: Math.floor(Math.random() * 20) + 5,
                             trend: null
                         };
-                        this.comparisonRows[5].values[sku.id] = {
+                        this.comparisonRows[5].values[competitor.id] = {
                             value: (Math.random() * 3 + 2).toFixed(1) + ' из 5',
                             trend: null
                         };
-                        this.comparisonRows[6].values[sku.id] = {
+                        this.comparisonRows[6].values[competitor.id] = {
                             value: Math.random() > 0.2 ? 'В наличии' : 'Под заказ',
                             trend: null
                         };
+                        this.comparisonRows[7].values[competitor.id] = {
+                            value: Math.random() > 0.5 ? '1-3 дня' : '3-7 дней',
+                            trend: null
+                        };
+                        this.comparisonRows[8].values[competitor.id] = {
+                            value: Math.random() > 0.7 ? '2 года' : '1 год',
+                            trend: null
+                        };
                     });
-                },
-                addComparisonColumn() {
-                    if (this.skus.length === 0) return;
-                    
-                    // Найдем SKU, который еще не добавлен для сравнения
-                    const availableSkus = this.skus.filter(sku => 
-                        sku !== this.selectedSku && !this.isCompared(sku)
-                    );
-                    
-                    if (availableSkus.length > 0) {
-                        const randomSku = availableSkus[Math.floor(Math.random() * availableSkus.length)];
-                        this.comparedSkus.push(randomSku);
-                    } else {
-                        alert('Нет доступных SKU для добавления в сравнение');
-                    }
                 },
                 toggleFullscreen() {
                     const chartContainer = document.querySelector('.chart-container');
