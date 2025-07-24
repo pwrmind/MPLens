@@ -542,7 +542,6 @@
             },
             watch: {
                 currentManagerId() {
-                    // При смене менеджера сбрасываем выбранный SKU
                     this.selectedManagerSku = null;
                 },
                 selectedManagerSku() {
@@ -561,10 +560,8 @@
                 }
             },
             mounted() {
-                // Инициализация пользователя и данных
                 this.initializeUser();
                 
-                // Проверяем сохранённую тему
                 if (localStorage.getItem('darkMode')) {
                     this.darkMode = localStorage.getItem('darkMode') === 'true';
                 } else {
@@ -572,11 +569,13 @@
                 }
                 
                 this.applyTheme();
-                this.initChart();
+                
+                this.$nextTick(() => {
+                    this.initChart();
+                });
             },
             methods: {
                 initializeUser() {
-                    // Создаем тестового пользователя с магазинами
                     this.currentUser = {
                         id: 'user1',
                         name: 'Иван Петров',
@@ -633,7 +632,6 @@
                         ]
                     };
                     
-                    // Устанавливаем первый магазин по умолчанию
                     if (this.currentUser.stores.length > 0) {
                         this.currentStoreId = this.currentUser.stores[0].id;
                         this.currentManagerId = this.currentUser.stores[0].managers[0].id;
@@ -659,7 +657,13 @@
                     this.selectedManagerSku = null;
                 },
                 initChart() {
-                    const ctx = document.getElementById('priceChart').getContext('2d');
+                    const canvasElement = document.getElementById('priceChart');
+                    if (!canvasElement) {
+                        console.warn('Canvas element not found. Skipping chart initialization.');
+                        return;
+                    }
+                    
+                    const ctx = canvasElement.getContext('2d');
                     this.chart = new Chart(ctx, {
                         type: 'line',
                         data: {
@@ -745,7 +749,6 @@
                         '#ec4899'  // Розовый - конкурент 5
                     ];
                     
-                    // Добавить товар менеджера
                     if (this.selectedManagerSku) {
                         const prices = this.getPricesForPeriod(this.selectedManagerSku, days);
                         datasets.push({
@@ -759,7 +762,6 @@
                         });
                     }
                     
-                    // Добавить конкурентов
                     this.comparedCompetitors.forEach((competitor, index) => {
                         const prices = this.getPricesForPeriod(competitor, days);
                         datasets.push({
@@ -773,7 +775,6 @@
                         });
                     });
                     
-                    // Обновляем опции для темной темы
                     this.chart.options = this.getChartOptions();
                     
                     this.chart.data.labels = labels;
@@ -798,14 +799,11 @@
                         priceChange: 0
                     };
                     
-                    // Генерируем историю цен
                     newSkuObj.priceHistory = generateSkuPriceHistory(newSkuObj);
                     
-                    // Добавляем SKU к текущему менеджеру
                     this.currentManager.skus.push(newSkuObj);
                     this.newSku = '';
                     
-                    // Выбираем новый SKU
                     this.selectedManagerSku = newSkuObj;
                 },
                 addCompetitor() {
@@ -814,7 +812,6 @@
                         return;
                     }
                     
-                    // Выбираем случайного конкурента, которого еще не добавили
                     const availableCompetitors = this.competitorSkus.filter(comp => 
                         !this.comparedCompetitors.some(c => c.id === comp.id)
                     );
@@ -830,12 +827,10 @@
                     this.comparedCompetitors = this.comparedCompetitors.filter(c => c.id !== competitor.id);
                 },
                 updateComparisonTable() {
-                    // Очищаем предыдущие значения
                     this.comparisonRows.forEach(row => {
                         row.values = {};
                     });
                     
-                    // Добавляем данные для товара менеджера
                     if (this.selectedManagerSku) {
                         const prices = this.getPricesForPeriod(this.selectedManagerSku, 30);
                         const minPrice = Math.min(...prices);
@@ -883,7 +878,6 @@
                         };
                     }
                     
-                    // Добавляем данные для конкурентов
                     this.comparedCompetitors.forEach(competitor => {
                         const prices = this.getPricesForPeriod(competitor, 30);
                         const minPrice = Math.min(...prices);
