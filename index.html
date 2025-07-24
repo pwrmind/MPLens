@@ -3,7 +3,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Инструмент сравнения цен</title>
+    <title>PriceMaster - Система сравнения цен</title>
     <script src="https://cdn.jsdelivr.net/npm/vue@2.6.14/dist/vue.js"></script>
     <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
     <script src="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/js/all.min.js"></script>
@@ -27,7 +27,6 @@
             color: #4ade80;
         }
         
-        /* Стили для переключателя темы */
         .theme-toggle {
             position: relative;
             display: inline-block;
@@ -151,6 +150,30 @@
             background-color: #92400e;
             color: #fde68a;
         }
+        
+        .manager-badge {
+            background-color: #dbeafe;
+            color: #1e40af;
+        }
+        
+        .dark .manager-badge {
+            background-color: #1e40af;
+            color: #dbeafe;
+        }
+        
+        .store-card {
+            transition: all 0.3s ease;
+            border-left: 4px solid #4f46e5;
+        }
+        
+        .store-card:hover {
+            transform: translateY(-2px);
+            box-shadow: 0 10px 15px -3px rgba(0, 0, 0, 0.1);
+        }
+        
+        .dark .store-card {
+            border-left: 4px solid #818cf8;
+        }
     </style>
 </head>
 <body class="bg-gray-50 dark:bg-gray-900 transition-colors duration-300">
@@ -158,9 +181,23 @@
         <!-- Шапка -->
         <header class="bg-white dark:bg-gray-800 shadow py-4 px-6">
             <div class="flex justify-between items-center">
-                <h1 class="text-2xl font-bold text-indigo-700 dark:text-indigo-400">
-                    <i class="fas fa-store mr-2"></i>Инструмент сравнения цен
-                </h1>
+                <div class="flex items-center space-x-4">
+                    <h1 class="text-2xl font-bold text-indigo-700 dark:text-indigo-400 flex items-center">
+                        <i class="fas fa-chart-line mr-2"></i>PriceMaster
+                    </h1>
+                    
+                    <!-- Выбор магазина -->
+                    <div class="relative" v-if="currentUser">
+                        <select v-model="currentStoreId" @change="changeStore" class="pl-10 pr-8 py-2 rounded-lg border border-gray-300 focus:outline-none focus:ring-2 focus:ring-indigo-500 dark:bg-gray-700 dark:border-gray-600 dark:text-white appearance-none">
+                            <option v-for="store in currentUser.stores" :key="store.id" :value="store.id">
+                                {{ store.name }} ({{ store.managers.length }} менеджеров)
+                            </option>
+                        </select>
+                        <i class="fas fa-store absolute left-3 top-3 text-gray-400 dark:text-gray-300"></i>
+                        <i class="fas fa-chevron-down absolute right-3 top-3 text-gray-400 dark:text-gray-300"></i>
+                    </div>
+                </div>
+                
                 <div class="flex items-center space-x-4">
                     <div class="flex items-center space-x-3">
                         <i class="fas fa-sun text-yellow-400"></i>
@@ -173,18 +210,28 @@
                         </label>
                         <i class="fas fa-moon text-blue-300"></i>
                     </div>
-                    <div class="relative">
-                        <input v-model="searchQuery" type="text" placeholder="Поиск SKU..." 
-                               class="pl-10 pr-4 py-2 rounded-lg border border-gray-300 focus:outline-none focus:ring-2 focus:ring-indigo-500 dark:bg-gray-700 dark:border-gray-600 dark:text-white">
-                        <i class="fas fa-search absolute left-3 top-3 text-gray-400 dark:text-gray-300"></i>
-                    </div>
-                    <div class="flex items-center space-x-2">
-                        <div class="text-sm font-medium dark:text-gray-300">
-                            <i class="fas fa-user mr-1"></i>Менеджер: {{ managerName }}
-                        </div>
-                        <button class="bg-indigo-600 hover:bg-indigo-700 text-white px-4 py-2 rounded-lg flex items-center dark:bg-indigo-700 dark:hover:bg-indigo-600">
-                            <i class="fas fa-download mr-2"></i> Экспорт
+                    
+                    <!-- Профиль пользователя -->
+                    <div class="relative group" v-if="currentUser">
+                        <button class="flex items-center space-x-2 focus:outline-none">
+                            <div class="w-10 h-10 rounded-full bg-indigo-100 dark:bg-indigo-900 flex items-center justify-center">
+                                <i class="fas fa-user text-indigo-600 dark:text-indigo-300"></i>
+                            </div>
+                            <div class="text-left hidden md:block">
+                                <div class="font-medium dark:text-gray-200">{{ currentUser.name }}</div>
+                                <div class="text-xs text-gray-500 dark:text-gray-400">{{ currentUser.email }}</div>
+                            </div>
                         </button>
+                        
+                        <!-- Выпадающее меню -->
+                        <div class="absolute right-0 mt-2 w-48 bg-white dark:bg-gray-800 rounded-lg shadow-lg py-1 z-50 hidden group-hover:block">
+                            <a href="#" class="block px-4 py-2 text-sm text-gray-700 dark:text-gray-300 hover:bg-gray-100 dark:hover:bg-gray-700">
+                                <i class="fas fa-cog mr-2"></i> Настройки
+                            </a>
+                            <a href="#" class="block px-4 py-2 text-sm text-gray-700 dark:text-gray-300 hover:bg-gray-100 dark:hover:bg-gray-700">
+                                <i class="fas fa-sign-out-alt mr-2"></i> Выйти
+                            </a>
+                        </div>
                     </div>
                 </div>
             </div>
@@ -192,14 +239,28 @@
 
         <!-- Основной контент -->
         <main class="flex flex-1 overflow-hidden">
-            <!-- Боковая панель - SKU менеджера -->
+            <!-- Боковая панель - Менеджеры и их SKU -->
             <div class="w-1/4 bg-white dark:bg-gray-800 border-r border-gray-200 dark:border-gray-700 flex flex-col">
                 <div class="p-4 border-b border-gray-200 dark:border-gray-700">
-                    <h2 class="text-lg font-semibold mb-4 dark:text-gray-200">
-                        <i class="fas fa-boxes mr-2"></i>Мои товары
-                    </h2>
+                    <div class="flex justify-between items-center mb-4">
+                        <h2 class="text-lg font-semibold dark:text-gray-200">
+                            <i class="fas fa-users mr-2"></i>Менеджеры магазина
+                        </h2>
+                        <button @click="showAddManagerModal = true" class="text-indigo-600 hover:text-indigo-800 dark:text-indigo-400 dark:hover:text-indigo-300">
+                            <i class="fas fa-plus"></i>
+                        </button>
+                    </div>
+                    
+                    <div class="mb-4">
+                        <select v-model="currentManagerId" class="w-full px-4 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-indigo-500 dark:bg-gray-700 dark:border-gray-600 dark:text-white">
+                            <option v-for="manager in currentStore.managers" :key="manager.id" :value="manager.id">
+                                {{ manager.name }} ({{ manager.skus.length }} SKU)
+                            </option>
+                        </select>
+                    </div>
+                    
                     <div class="flex mb-4">
-                        <input v-model="newSku" type="text" placeholder="Добавить новый SKU..." 
+                        <input v-model="newSku" type="text" placeholder="Добавить SKU для менеджера..." 
                                class="flex-1 px-4 py-2 border border-gray-300 rounded-l-lg focus:outline-none focus:ring-2 focus:ring-indigo-500 dark:bg-gray-700 dark:border-gray-600 dark:text-white">
                         <button @click="addNewManagerSku" 
                                 class="bg-indigo-600 hover:bg-indigo-700 text-white px-4 py-2 rounded-r-lg dark:bg-indigo-700 dark:hover:bg-indigo-600">
@@ -209,7 +270,11 @@
                 </div>
                 
                 <div class="overflow-y-auto flex-1 scrollbar-hide">
-                    <div v-for="(sku, index) in filteredManagerSkus" :key="index" 
+                    <div v-if="currentManager" class="p-3 bg-indigo-50 dark:bg-indigo-900 text-indigo-800 dark:text-indigo-200 font-medium">
+                        <i class="fas fa-user-tie mr-2"></i> {{ currentManager.name }}
+                    </div>
+                    
+                    <div v-for="(sku, index) in currentManagerSkus" :key="index" 
                          @click="selectManagerSku(sku)"
                          :class="{'bg-indigo-50 dark:bg-indigo-900 border-l-4 border-indigo-500 dark:border-indigo-400': selectedManagerSku && selectedManagerSku.id === sku.id}"
                          class="p-3 border-b border-gray-200 dark:border-gray-700 hover:bg-gray-50 dark:hover:bg-gray-700 cursor-pointer flex justify-between items-center">
@@ -224,6 +289,11 @@
                             </span>
                         </div>
                     </div>
+                    
+                    <div v-if="currentManagerSkus.length === 0" class="p-6 text-center text-gray-500 dark:text-gray-400">
+                        <i class="fas fa-inbox text-3xl mb-2"></i>
+                        <p>Нет SKU для этого менеджера</p>
+                    </div>
                 </div>
             </div>
 
@@ -234,7 +304,7 @@
                     <div class="flex justify-between items-center mb-4">
                         <h2 class="text-lg font-semibold dark:text-gray-200">
                             <span v-if="selectedManagerSku">История цен для {{ selectedManagerSku.name }}</span>
-                            <span v-else class="dark:text-gray-400">Выберите ваш товар для сравнения</span>
+                            <span v-else class="dark:text-gray-400">Выберите SKU менеджера для сравнения</span>
                         </h2>
                         <div class="flex space-x-2">
                             <select v-model="timeRange" class="border border-gray-300 rounded px-3 py-1 dark:bg-gray-700 dark:border-gray-600 dark:text-white">
@@ -262,8 +332,9 @@
                                         Характеристика
                                     </th>
                                     <th v-if="selectedManagerSku" scope="col" class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider dark:text-gray-300">
-                                        <div class="flex items-center justify-between">
-                                            <span>Ваш товар: {{ selectedManagerSku.name }}</span>
+                                        <div class="flex items-center">
+                                            <span class="manager-badge text-xs px-2 py-1 rounded mr-2">Ваш</span>
+                                            {{ selectedManagerSku.name }}
                                         </div>
                                     </th>
                                     <th v-for="(competitor, index) in comparedCompetitors" :key="index" scope="col" 
@@ -281,7 +352,7 @@
                                     <th scope="col" class="px-6 py-3 text-center">
                                         <button @click="addCompetitor" 
                                                 class="text-indigo-600 hover:text-indigo-800 dark:text-indigo-400 dark:hover:text-indigo-300 text-sm font-medium">
-                                            <i class="fas fa-plus mr-1"></i> Добавить конкурента
+                                            <i class="fas fa-plus mr-1"></i> Добавить
                                         </button>
                                     </th>
                                 </tr>
@@ -323,38 +394,113 @@
 
         <!-- Футер -->
         <footer class="bg-white dark:bg-gray-800 border-t border-gray-200 dark:border-gray-700 py-4 px-6 text-center text-sm text-gray-500 dark:text-gray-400">
-            <p>Инструмент сравнения цен на маркетплейсах • {{ new Date().getFullYear() }}</p>
+            <p>PriceMaster - Система сравнения цен • {{ new Date().getFullYear() }}</p>
         </footer>
+
+        <!-- Модальное окно добавления менеджера -->
+        <div v-if="showAddManagerModal" class="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50 p-4">
+            <div class="bg-white dark:bg-gray-800 rounded-lg shadow-xl w-full max-w-md">
+                <div class="p-6">
+                    <h3 class="text-lg font-medium text-gray-900 dark:text-gray-200 mb-4">
+                        <i class="fas fa-user-plus mr-2"></i>Добавить менеджера
+                    </h3>
+                    
+                    <div class="mb-4">
+                        <label class="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">Имя менеджера</label>
+                        <input v-model="newManagerName" type="text" class="w-full px-4 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-indigo-500 dark:bg-gray-700 dark:border-gray-600 dark:text-white">
+                    </div>
+                    
+                    <div class="mb-4">
+                        <label class="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">Email</label>
+                        <input v-model="newManagerEmail" type="email" class="w-full px-4 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-indigo-500 dark:bg-gray-700 dark:border-gray-600 dark:text-white">
+                    </div>
+                    
+                    <div class="flex justify-end space-x-3">
+                        <button @click="showAddManagerModal = false" class="px-4 py-2 text-gray-700 dark:text-gray-300 hover:bg-gray-100 dark:hover:bg-gray-700 rounded-lg">
+                            Отмена
+                        </button>
+                        <button @click="addNewManager" class="px-4 py-2 bg-indigo-600 text-white rounded-lg hover:bg-indigo-700 dark:bg-indigo-700 dark:hover:bg-indigo-600">
+                            Добавить
+                        </button>
+                    </div>
+                </div>
+            </div>
+        </div>
     </div>
 
     <script>
+        // Генерация случайных данных
+        function generateSkuPriceHistory(sku) {
+            const today = new Date();
+            const history = [];
+            let basePrice = Math.floor(Math.random() * 20000) + 5000;
+            
+            for (let i = 90; i >= 0; i--) {
+                const date = new Date(today);
+                date.setDate(today.getDate() - i);
+                
+                const fluctuation = Math.random() > 0.7 ? (Math.random() * 0.1 - 0.05) * basePrice : 0;
+                const price = Math.round(basePrice + fluctuation);
+                
+                history.push({
+                    date: date.toISOString().split('T')[0],
+                    price
+                });
+            }
+            
+            const currentPrice = history[history.length - 1].price;
+            const monthAgoPrice = history[history.length - 30].price;
+            sku.priceChange = parseFloat(((currentPrice - monthAgoPrice) / monthAgoPrice * 100).toFixed(1));
+            
+            return history;
+        }
+        
+        function generateManagerSkus(count, prefix) {
+            const skus = [];
+            const products = [
+                'Смартфон', 'Ноутбук', 'Наушники', 'Умные часы', 'Планшет', 
+                'Фитнес-браслет', 'Игровая консоль', 'Электронная книга',
+                'Монитор', 'Клавиатура', 'Мышь', 'Внешний жесткий диск'
+            ];
+            
+            const brands = [
+                'Samsung', 'Apple', 'Sony', 'Xiaomi', 'Huawei', 
+                'Lenovo', 'Asus', 'Acer', 'Dell', 'HP'
+            ];
+            
+            for (let i = 1; i <= count; i++) {
+                const product = products[Math.floor(Math.random() * products.length)];
+                const brand = brands[Math.floor(Math.random() * brands.length)];
+                const sku = {
+                    id: `${prefix}${i}`,
+                    name: `${product} ${brand} ${Math.floor(Math.random() * 10) + 20}`,
+                    priceHistory: [],
+                    priceChange: 0
+                };
+                sku.priceHistory = generateSkuPriceHistory(sku);
+                skus.push(sku);
+            }
+            
+            return skus;
+        }
+        
+        function generateCompetitorSkus(count) {
+            return generateManagerSkus(count, 'comp');
+        }
+        
+        // Основное приложение Vue
         new Vue({
             el: '#app',
             data: {
-                managerName: "Иван Петров",
+                currentUser: null,
+                currentStoreId: null,
+                currentManagerId: null,
                 searchQuery: '',
                 newSku: '',
                 timeRange: '30',
                 selectedManagerSku: null,
                 comparedCompetitors: [],
                 darkMode: false,
-                managerSkus: [
-                    { id: 'mgr001', name: 'Смартфон Samsung Galaxy S21', priceHistory: [], priceChange: 2.5 },
-                    { id: 'mgr002', name: 'Ноутбук Apple MacBook Air', priceHistory: [], priceChange: -1.2 },
-                    { id: 'mgr003', name: 'Наушники Sony WH-1000XM4', priceHistory: [], priceChange: 0.8 },
-                    { id: 'mgr004', name: 'Умные часы Apple Watch', priceHistory: [], priceChange: 3.1 },
-                    { id: 'mgr005', name: 'Планшет Samsung Galaxy Tab', priceHistory: [], priceChange: -0.5 },
-                ],
-                competitorSkus: [
-                    { id: 'comp001', name: 'Смартфон Galaxy S21 (Конкурент 1)', priceHistory: [], priceChange: 1.8 },
-                    { id: 'comp002', name: 'MacBook Air (Конкурент 2)', priceHistory: [], priceChange: -0.7 },
-                    { id: 'comp003', name: 'Наушники Sony (Конкурент 1)', priceHistory: [], priceChange: 2.1 },
-                    { id: 'comp004', name: 'Apple Watch (Конкурент 3)', priceHistory: [], priceChange: 4.2 },
-                    { id: 'comp005', name: 'Планшет Galaxy Tab (Конкурент 2)', priceHistory: [], priceChange: -1.3 },
-                    { id: 'comp006', name: 'Фитнес-браслет Xiaomi (Конкурент 4)', priceHistory: [], priceChange: 1.7 },
-                    { id: 'comp007', name: 'PlayStation 5 (Конкурент 5)', priceHistory: [], priceChange: -2.3 },
-                    { id: 'comp008', name: 'Электронная книга Kindle (Конкурент 3)', priceHistory: [], priceChange: 0.4 }
-                ],
                 chart: null,
                 comparisonRows: [
                     { characteristic: 'Текущая цена', values: {} },
@@ -366,19 +512,39 @@
                     { characteristic: 'Доступность', values: {} },
                     { characteristic: 'Доставка', values: {} },
                     { characteristic: 'Гарантия', values: {} }
-                ]
+                ],
+                showAddManagerModal: false,
+                newManagerName: '',
+                newManagerEmail: '',
+                competitorSkus: generateCompetitorSkus(20)
             },
             computed: {
+                currentStore() {
+                    if (!this.currentUser || !this.currentStoreId) return null;
+                    return this.currentUser.stores.find(store => store.id === this.currentStoreId);
+                },
+                currentManager() {
+                    if (!this.currentStore || !this.currentManagerId) return null;
+                    return this.currentStore.managers.find(m => m.id === this.currentManagerId);
+                },
+                currentManagerSkus() {
+                    if (!this.currentManager) return [];
+                    return this.currentManager.skus;
+                },
                 filteredManagerSkus() {
-                    if (!this.searchQuery) return this.managerSkus;
+                    if (!this.searchQuery) return this.currentManagerSkus;
                     const query = this.searchQuery.toLowerCase();
-                    return this.managerSkus.filter(sku => 
+                    return this.currentManagerSkus.filter(sku => 
                         sku.name.toLowerCase().includes(query) || 
                         sku.id.toLowerCase().includes(query)
                     );
                 }
             },
             watch: {
+                currentManagerId() {
+                    // При смене менеджера сбрасываем выбранный SKU
+                    this.selectedManagerSku = null;
+                },
                 selectedManagerSku() {
                     this.updateChart();
                     this.updateComparisonTable();
@@ -395,7 +561,10 @@
                 }
             },
             mounted() {
-                // Проверяем сохранённую тему или системные настройки
+                // Инициализация пользователя и данных
+                this.initializeUser();
+                
+                // Проверяем сохранённую тему
                 if (localStorage.getItem('darkMode')) {
                     this.darkMode = localStorage.getItem('darkMode') === 'true';
                 } else {
@@ -403,15 +572,73 @@
                 }
                 
                 this.applyTheme();
-                this.generatePriceHistory();
                 this.initChart();
-                
-                // Выбираем первый SKU менеджера по умолчанию
-                if (this.managerSkus.length > 0) {
-                    this.selectedManagerSku = this.managerSkus[0];
-                }
             },
             methods: {
+                initializeUser() {
+                    // Создаем тестового пользователя с магазинами
+                    this.currentUser = {
+                        id: 'user1',
+                        name: 'Иван Петров',
+                        email: 'ivan.petrov@example.com',
+                        stores: [
+                            {
+                                id: 'store1',
+                                name: 'Электроника Онлайн',
+                                managers: [
+                                    {
+                                        id: 'mgr1',
+                                        name: 'Анна Сидорова',
+                                        email: 'anna@example.com',
+                                        skus: generateManagerSkus(8, 'mgr1')
+                                    },
+                                    {
+                                        id: 'mgr2',
+                                        name: 'Дмитрий Иванов',
+                                        email: 'dmitry@example.com',
+                                        skus: generateManagerSkus(6, 'mgr2')
+                                    }
+                                ]
+                            },
+                            {
+                                id: 'store2',
+                                name: 'Гаджеты Плюс',
+                                managers: [
+                                    {
+                                        id: 'mgr3',
+                                        name: 'Ольга Кузнецова',
+                                        email: 'olga@example.com',
+                                        skus: generateManagerSkus(7, 'mgr3')
+                                    },
+                                    {
+                                        id: 'mgr4',
+                                        name: 'Сергей Васильев',
+                                        email: 'sergey@example.com',
+                                        skus: generateManagerSkus(5, 'mgr4')
+                                    }
+                                ]
+                            },
+                            {
+                                id: 'store3',
+                                name: 'ТехноМаркет',
+                                managers: [
+                                    {
+                                        id: 'mgr5',
+                                        name: 'Мария Федорова',
+                                        email: 'maria@example.com',
+                                        skus: generateManagerSkus(9, 'mgr5')
+                                    }
+                                ]
+                            }
+                        ]
+                    };
+                    
+                    // Устанавливаем первый магазин по умолчанию
+                    if (this.currentUser.stores.length > 0) {
+                        this.currentStoreId = this.currentUser.stores[0].id;
+                        this.currentManagerId = this.currentUser.stores[0].managers[0].id;
+                    }
+                },
                 applyTheme() {
                     if (this.darkMode) {
                         document.body.classList.add('dark');
@@ -425,44 +652,11 @@
                     this.applyTheme();
                     this.updateChart();
                 },
-                generatePriceHistory() {
-                    const today = new Date();
-                    
-                    // Генерация данных для SKU менеджера
-                    this.managerSkus.forEach(sku => {
-                        this.generateSkuPriceHistory(sku);
-                    });
-                    
-                    // Генерация данных для SKU конкурентов
-                    this.competitorSkus.forEach(sku => {
-                        this.generateSkuPriceHistory(sku);
-                    });
-                },
-                generateSkuPriceHistory(sku) {
-                    const today = new Date();
-                    const history = [];
-                    let basePrice = Math.floor(Math.random() * 20000) + 5000;
-                    
-                    for (let i = 90; i >= 0; i--) {
-                        const date = new Date(today);
-                        date.setDate(today.getDate() - i);
-                        
-                        // Генерация колебаний цен
-                        const fluctuation = Math.random() > 0.7 ? (Math.random() * 0.1 - 0.05) * basePrice : 0;
-                        const price = Math.round(basePrice + fluctuation);
-                        
-                        history.push({
-                            date: date.toISOString().split('T')[0],
-                            price
-                        });
+                changeStore() {
+                    if (this.currentStore && this.currentStore.managers.length > 0) {
+                        this.currentManagerId = this.currentStore.managers[0].id;
                     }
-                    
-                    // Рассчитаем изменение цены за последние 30 дней
-                    const currentPrice = history[history.length - 1].price;
-                    const monthAgoPrice = history[history.length - 30].price;
-                    sku.priceChange = parseFloat(((currentPrice - monthAgoPrice) / monthAgoPrice * 100).toFixed(1));
-                    
-                    sku.priceHistory = history;
+                    this.selectedManagerSku = null;
                 },
                 initChart() {
                     const ctx = document.getElementById('priceChart').getContext('2d');
@@ -594,9 +788,9 @@
                     this.selectedManagerSku = sku;
                 },
                 addNewManagerSku() {
-                    if (!this.newSku.trim()) return;
+                    if (!this.newSku.trim() || !this.currentManager) return;
                     
-                    const newId = 'mgr' + (Math.floor(Math.random() * 900) + 100);
+                    const newId = 'sku' + Date.now();
                     const newSkuObj = {
                         id: newId,
                         name: this.newSku,
@@ -604,13 +798,15 @@
                         priceChange: 0
                     };
                     
-                    this.generateSkuPriceHistory(newSkuObj);
-                    this.managerSkus.push(newSkuObj);
+                    // Генерируем историю цен
+                    newSkuObj.priceHistory = generateSkuPriceHistory(newSkuObj);
+                    
+                    // Добавляем SKU к текущему менеджеру
+                    this.currentManager.skus.push(newSkuObj);
                     this.newSku = '';
                     
-                    if (!this.selectedManagerSku) {
-                        this.selectedManagerSku = newSkuObj;
-                    }
+                    // Выбираем новый SKU
+                    this.selectedManagerSku = newSkuObj;
                 },
                 addCompetitor() {
                     if (this.comparedCompetitors.length >= 5) {
@@ -734,6 +930,23 @@
                             trend: null
                         };
                     });
+                },
+                addNewManager() {
+                    if (!this.newManagerName.trim() || !this.currentStore) return;
+                    
+                    const newId = 'mgr' + Date.now();
+                    const newManager = {
+                        id: newId,
+                        name: this.newManagerName,
+                        email: this.newManagerEmail || `${newId}@example.com`,
+                        skus: []
+                    };
+                    
+                    this.currentStore.managers.push(newManager);
+                    this.currentManagerId = newId;
+                    this.showAddManagerModal = false;
+                    this.newManagerName = '';
+                    this.newManagerEmail = '';
                 },
                 toggleFullscreen() {
                     const chartContainer = document.querySelector('.chart-container');
